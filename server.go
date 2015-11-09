@@ -79,7 +79,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	err = s.db.Exec(`INSERT INTO records (id,path,checksum, e_tag, m_time) VALUES (?,?,?,?,?)
   				ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), e_tag=VALUES(e_tag), mtime=VALUES(m_time)`,
-		id, p, etag, mtime).Error
+		id, p, req.Checksum, etag, mtime).Error
 
 	if err != nil {
 		return &pb.Void{}, err
