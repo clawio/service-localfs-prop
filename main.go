@@ -39,9 +39,9 @@ func getEnviron() (*environ, error) {
 	return e, nil
 }
 func printEnviron(e *environ) {
-	log.Infof("%s=%s", dsnEnvar, e.dsn)
-	log.Infof("%s=%d", portEnvar, e.port)
-	log.Infof("%s=%s", sharedSecretEnvar, "******")
+	fmt.Printf("%s=%s", dsnEnvar, e.dsn)
+	fmt.Printf("%s=%d", portEnvar, e.port)
+	fmt.Printf("%s=%s", sharedSecretEnvar, "******")
 }
 
 func setupLog() {
@@ -74,7 +74,7 @@ func main() {
 
 	env, err := getEnviron()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -86,13 +86,13 @@ func main() {
 
 	srv, err := newServer(p)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", env.port))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
