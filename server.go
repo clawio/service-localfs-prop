@@ -29,7 +29,7 @@ type newServerParams struct {
 
 func newServer(p *newServerParams) (*server, error) {
 
-	db, err := newDB("sqlite3", p.dsn)
+	db, err := newDB("mysql", p.dsn)
 	if err != nil {
 		return nil, err
 	}
