@@ -11,6 +11,8 @@ It is generated from these files:
 It has these top-level messages:
 	Void
 	PutReq
+	GetReq
+	Record
 */
 package localstore
 
@@ -44,6 +46,27 @@ type PutReq struct {
 func (m *PutReq) Reset()         { *m = PutReq{} }
 func (m *PutReq) String() string { return proto.CompactTextString(m) }
 func (*PutReq) ProtoMessage()    {}
+
+type GetReq struct {
+	AccessToken string `protobuf:"bytes,1,opt,name=access_token" json:"access_token,omitempty"`
+	Path        string `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
+}
+
+func (m *GetReq) Reset()         { *m = GetReq{} }
+func (m *GetReq) String() string { return proto.CompactTextString(m) }
+func (*GetReq) ProtoMessage()    {}
+
+type Record struct {
+	Id       string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Path     string `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
+	Checksum string `protobuf:"bytes,3,opt,name=checksum" json:"checksum,omitempty"`
+	Modified uint32 `protobuf:"varint,4,opt,name=modified" json:"modified,omitempty"`
+	Etag     string `protobuf:"bytes,5,opt,name=etag" json:"etag,omitempty"`
+}
+
+func (m *Record) Reset()         { *m = Record{} }
+func (m *Record) String() string { return proto.CompactTextString(m) }
+func (*Record) ProtoMessage()    {}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
