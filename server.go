@@ -56,6 +56,31 @@ type server struct {
 	db *gorm.DB
 }
 
+func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
+
+	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
+	if err != nil {
+		log.Error(err)
+		return &pb.Record{}, unauthenticatedError
+	}
+
+	log.Infof("%s", idt)
+
+	p := path.Clean(req.Path)
+
+	log.Infof("path is %s", p)
+
+	rec := &pb.Record{}
+	err = s.db.Where("path=?", p).First(rec).Error
+	// TODO(labkode) If record is not found putted. This will happen on storages with DAS
+	if err != nil {
+		log.Error(err)
+		return rec, err
+	}
+
+	return rec, nil
+}
+
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
