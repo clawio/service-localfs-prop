@@ -76,6 +76,7 @@ var _ grpc.ClientConn
 
 type PropClient interface {
 	Put(ctx context.Context, in *PutReq, opts ...grpc.CallOption) (*Void, error)
+	Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Record, error)
 }
 
 type propClient struct {
@@ -95,10 +96,20 @@ func (c *propClient) Put(ctx context.Context, in *PutReq, opts ...grpc.CallOptio
 	return out, nil
 }
 
+func (c *propClient) Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Record, error) {
+	out := new(Record)
+	err := grpc.Invoke(ctx, "/localstore.Prop/Get", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Prop service
 
 type PropServer interface {
 	Put(context.Context, *PutReq) (*Void, error)
+	Get(context.Context, *GetReq) (*Record, error)
 }
 
 func RegisterPropServer(s *grpc.Server, srv PropServer) {
@@ -117,6 +128,18 @@ func _Prop_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return out, nil
 }
 
+func _Prop_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(PropServer).Get(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Prop_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "localstore.Prop",
 	HandlerType: (*PropServer)(nil),
@@ -124,6 +147,10 @@ var _Prop_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Put",
 			Handler:    _Prop_Put_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _Prop_Get_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

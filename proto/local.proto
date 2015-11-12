@@ -4,7 +4,7 @@ package localstore;
 
 service Prop {
     rpc Put(PutReq) returns (Void) {}
-    //rpc Get(GetReq) returns (Record) {}
+    rpc Get(GetReq) returns (Record) {}
     //rpc Cp(CpReq) returns (Void) {}
     //rpc Mv(MvReq) returns (Void) {}
     //rpc Rm(RmReq) returns (Void) {}
