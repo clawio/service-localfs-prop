@@ -70,15 +70,20 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
 	log.Infof("path is %s", p)
 
-	rec := &pb.Record{}
-	err = s.db.Where("path=?", p).First(rec).Error
-	// TODO(labkode) If record is not found putted. This will happen on storages with DAS
+	rec, err := s.getByPath(p)
+	// TODO(labkode) If record is not found put it. This will happen on storages with DAS
 	if err != nil {
 		log.Error(err)
-		return rec, err
+		return &pb.Record{}, err
 	}
 
-	return rec, nil
+	r := &pb.Record{}
+	r.Id = rec.ID
+	r.Path = rec.Path
+	r.Etag = rec.ETag
+	r.Modified = rec.MTime
+	r.Checksum = rec.Checksum
+	return r, nil
 }
 
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
