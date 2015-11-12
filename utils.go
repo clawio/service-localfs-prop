@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 )
@@ -13,6 +15,10 @@ type record struct {
 	MTime    uint32
 }
 
+func (r *record) String() string {
+	return fmt.Sprintf("id=%s path=%s sum=%s etag=%s mtime=%d",
+		r.ID, r.Path, r.Checksum, r.ETag, r.MTime)
+}
 func newDB(driver, dsn string) (*gorm.DB, error) {
 
 	db, err := gorm.Open(driver, dsn)

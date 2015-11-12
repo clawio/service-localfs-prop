@@ -31,8 +31,19 @@ func newServer(p *newServerParams) (*server, error) {
 
 	db, err := newDB("mysql", p.dsn)
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
+
+	db.LogMode(true)
+
+	err = db.AutoMigrate(&record{}).Error
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	log.Infof("automigration applied")
 
 	s := &server{}
 	s.p = p
@@ -75,15 +86,18 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 		id = r.ID
 	}
 
-	log.Infof("record is %+v", r)
+	log.Infof("record has %s", r.String())
 
 	err = s.db.Exec(`INSERT INTO records (id,path,checksum, e_tag, m_time) VALUES (?,?,?,?,?)
-  				ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), e_tag=VALUES(e_tag), mtime=VALUES(m_time)`,
+  				ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), e_tag=VALUES(e_tag), m_time=VALUES(m_time)`,
 		id, p, req.Checksum, etag, mtime).Error
 
 	if err != nil {
+		log.Error(err)
 		return &pb.Void{}, err
 	}
+
+	log.Infof("putted record into db")
 
 	return &pb.Void{}, nil
 }
