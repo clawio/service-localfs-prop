@@ -23,8 +23,8 @@ message PutReq {
 message GetReq {
     string access_token = 1;
     string path = 2;
+    bool force_creation = 3;
 }
-
 /*
 message RmReq {
     string access_token = 1;

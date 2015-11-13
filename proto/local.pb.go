@@ -48,8 +48,9 @@ func (m *PutReq) String() string { return proto.CompactTextString(m) }
 func (*PutReq) ProtoMessage()    {}
 
 type GetReq struct {
-	AccessToken string `protobuf:"bytes,1,opt,name=access_token" json:"access_token,omitempty"`
-	Path        string `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
+	AccessToken   string `protobuf:"bytes,1,opt,name=access_token" json:"access_token,omitempty"`
+	Path          string `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
+	ForceCreation bool   `protobuf:"varint,3,opt,name=force_creation" json:"force_creation,omitempty"`
 }
 
 func (m *GetReq) Reset()         { *m = GetReq{} }
