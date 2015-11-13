@@ -7,7 +7,7 @@ service Prop {
     rpc Get(GetReq) returns (Record) {}
     //rpc Cp(CpReq) returns (Void) {}
     //rpc Mv(MvReq) returns (Void) {}
-    //rpc Rm(RmReq) returns (Void) {}
+    rpc Rm(RmReq) returns (Void) {}
 }
 
 message Void {
@@ -25,12 +25,12 @@ message GetReq {
     string path = 2;
     bool force_creation = 3;
 }
-/*
+
 message RmReq {
     string access_token = 1;
     string path = 2;
 }
-
+/*
 message MvReq {
     string access_token = 1;
     string src = 2;
