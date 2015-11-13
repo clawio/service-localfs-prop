@@ -70,11 +70,33 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
 	log.Infof("path is %s", p)
 
-	rec, err := s.getByPath(p)
-	// TODO(labkode) If record is not found put it. This will happen on storages with DAS
+	var rec *record
+
+	rec, err = s.getByPath(p)
 	if err != nil {
 		log.Error(err)
-		return &pb.Record{}, err
+		if err != gorm.RecordNotFound {
+			return &pb.Record{}, err
+		}
+
+		if !req.ForceCreation {
+			return &pb.Record{}, err
+		}
+
+		if req.ForceCreation {
+			in := &pb.PutReq{}
+			in.AccessToken = req.AccessToken
+			in.Path = req.Path
+			_, e := s.Put(ctx, in)
+			if e != nil {
+				return &pb.Record{}, err
+			}
+
+			rec, err = s.getByPath(p)
+			if err != nil {
+				return &pb.Record{}, nil
+			}
+		}
 	}
 
 	r := &pb.Record{}

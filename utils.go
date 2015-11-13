@@ -7,6 +7,7 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// TODO(labkode) set collation for table and column to utf8. The default is swedish
 type record struct {
 	ID       string
 	Path     string
