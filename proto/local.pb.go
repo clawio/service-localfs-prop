@@ -13,6 +13,7 @@ It has these top-level messages:
 	PutReq
 	GetReq
 	RmReq
+	MvReq
 	Record
 */
 package localstore
@@ -67,6 +68,16 @@ func (m *RmReq) Reset()         { *m = RmReq{} }
 func (m *RmReq) String() string { return proto.CompactTextString(m) }
 func (*RmReq) ProtoMessage()    {}
 
+type MvReq struct {
+	AccessToken string `protobuf:"bytes,1,opt,name=access_token" json:"access_token,omitempty"`
+	Src         string `protobuf:"bytes,2,opt,name=src" json:"src,omitempty"`
+	Dst         string `protobuf:"bytes,3,opt,name=dst" json:"dst,omitempty"`
+}
+
+func (m *MvReq) Reset()         { *m = MvReq{} }
+func (m *MvReq) String() string { return proto.CompactTextString(m) }
+func (*MvReq) ProtoMessage()    {}
+
 type Record struct {
 	Id       string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Path     string `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
@@ -89,7 +100,7 @@ type PropClient interface {
 	Put(ctx context.Context, in *PutReq, opts ...grpc.CallOption) (*Void, error)
 	Get(ctx context.Context, in *GetReq, opts ...grpc.CallOption) (*Record, error)
 	// rpc Cp(CpReq) returns (Void) {}
-	// rpc Mv(MvReq) returns (Void) {}
+	Mv(ctx context.Context, in *MvReq, opts ...grpc.CallOption) (*Void, error)
 	Rm(ctx context.Context, in *RmReq, opts ...grpc.CallOption) (*Void, error)
 }
 
@@ -119,6 +130,15 @@ func (c *propClient) Get(ctx context.Context, in *GetReq, opts ...grpc.CallOptio
 	return out, nil
 }
 
+func (c *propClient) Mv(ctx context.Context, in *MvReq, opts ...grpc.CallOption) (*Void, error) {
+	out := new(Void)
+	err := grpc.Invoke(ctx, "/localstore.Prop/Mv", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *propClient) Rm(ctx context.Context, in *RmReq, opts ...grpc.CallOption) (*Void, error) {
 	out := new(Void)
 	err := grpc.Invoke(ctx, "/localstore.Prop/Rm", in, out, c.cc, opts...)
@@ -134,7 +154,7 @@ type PropServer interface {
 	Put(context.Context, *PutReq) (*Void, error)
 	Get(context.Context, *GetReq) (*Record, error)
 	// rpc Cp(CpReq) returns (Void) {}
-	// rpc Mv(MvReq) returns (Void) {}
+	Mv(context.Context, *MvReq) (*Void, error)
 	Rm(context.Context, *RmReq) (*Void, error)
 }
 
@@ -166,6 +186,18 @@ func _Prop_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return out, nil
 }
 
+func _Prop_Mv_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MvReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(PropServer).Mv(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func _Prop_Rm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(RmReq)
 	if err := dec(in); err != nil {
@@ -189,6 +221,10 @@ var _Prop_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _Prop_Get_Handler,
+		},
+		{
+			MethodName: "Mv",
+			Handler:    _Prop_Mv_Handler,
 		},
 		{
 			MethodName: "Rm",
