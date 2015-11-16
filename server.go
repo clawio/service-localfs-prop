@@ -123,11 +123,19 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	log.Infof("path is %s", p)
 
-	err = s.db.Where("path LIKE ? AND m_time < ?", p+"%", time.Now().Unix()).Delete(record{}).Error
+	ts := time.Now().Unix()
+	err = s.db.Where("path LIKE ? AND m_time < ?", p+"%", ts).Delete(record{}).Error
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
 	}
+
+	err = s.propagateChanges(p, uuid.New(), uint32(ts), "")
+	if err != nil {
+		log.Error(err)
+	}
+
+	log.Infof("propagated changes till %s", "")
 
 	return &pb.Void{}, nil
 }
@@ -171,7 +179,10 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	log.Infof("new record saved to db")
 
-	_ = s.propagateChanges(p, etag, mtime, "")
+	err = s.propagateChanges(p, etag, mtime, "")
+	if err != nil {
+		log.Error(err)
+	}
 
 	log.Infof("propagated changes till ancestor %s", "")
 
@@ -224,6 +235,7 @@ func (s *server) propagateChanges(p, etag string, mtime uint32, stopPath string)
 	return nil
 }
 
+// TODO remove current dir from returned list
 func getPathsTillHome(p string) []string {
 
 	paths := []string{}
