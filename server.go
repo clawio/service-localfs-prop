@@ -126,10 +126,52 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 	log.Infof("dst path is %s", dst)
 
 	//TODO implement rename in db
+	recs, err := s.getRecordsWithPathPrefix(src)
+	if err != nil {
+		return &pb.Void{}, nil
+	}
+
+	etag := uuid.New()
+	mtime := uint32(time.Now().Unix())
+
+	tx := s.db.Begin()
+	for _, rec := range recs {
+		newPath := path.Join(dst, path.Clean(strings.Trim(rec.Path, src)))
+		log.Infof("src path %s will be renamed to %s", src, newPath)
+
+		err = s.db.Model(record{}).Where("id=?", rec.ID).Updates(record{ETag: etag, MTime: mtime, Path: newPath}).Error
+		if err != nil {
+			log.Error(err)
+			tx.Rollback()
+			return &pb.Void{}, err
+		}
+	}
+	tx.Commit()
+
+	log.Infof("renamed %d entries", len(recs))
+
+	err = s.propagateChanges(dst, etag, mtime, "")
+	if err != nil {
+		log.Error(err)
+	}
+
+	log.Infof("propagated changes till %s", "")
 
 	return &pb.Void{}, nil
 }
 
+func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
+
+	var recs []record
+
+	err := s.db.Where("path LIKE ?", p+"%").Find(&recs).Error
+	if err != nil {
+		log.Error(err)
+		return recs, nil
+	}
+
+	return recs, nil
+}
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
