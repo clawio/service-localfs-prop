@@ -123,7 +123,7 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	log.Infof("path is %s", p)
 
-	err = s.db.Where("path LIKE ? AND mtime < ?", p+"%", time.Now().Unix()).Delete(record{}).Error
+	err = s.db.Where("path LIKE ? AND m_time < ?", p+"%", time.Now().Unix()).Delete(record{}).Error
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
