@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -108,6 +109,29 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 	return r, nil
 }
 
+func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
+
+	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, unauthenticatedError
+	}
+
+	log.Infof("%s", idt)
+
+	p := path.Clean(req.Path)
+
+	log.Infof("path is %s", p)
+
+	err = s.db.Where("path LIKE ? AND mtime < ?", p+"%", time.Now().Unix()).Delete(record{}).Error
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+
+	return &pb.Void{}, nil
+}
+
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
@@ -124,7 +148,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	var id string
 	var etag = uuid.New()
-	var mtime = time.Now().Unix()
+	var mtime = uint32(time.Now().Unix())
 
 	r, err := s.getByPath(p)
 	if err != nil {
@@ -138,18 +162,18 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 		id = r.ID
 	}
 
-	log.Infof("record has %s", r.String())
+	log.Infof("new record will have id=%s path=%s checksum=%s etag=%s mtime=%d", id, p, req.Checksum, etag, mtime)
 
-	err = s.db.Exec(`INSERT INTO records (id,path,checksum, e_tag, m_time) VALUES (?,?,?,?,?)
-  				ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), e_tag=VALUES(e_tag), m_time=VALUES(m_time)`,
-		id, p, req.Checksum, etag, mtime).Error
-
+	err = s.insert(id, p, req.Checksum, etag, mtime)
 	if err != nil {
-		log.Error(err)
 		return &pb.Void{}, err
 	}
 
-	log.Infof("putted record into db")
+	log.Infof("new record saved to db")
+
+	_ = s.propagateChanges(p, etag, mtime, "")
+
+	log.Infof("propagated changes till ancestor %s", "")
 
 	return &pb.Void{}, nil
 }
@@ -159,4 +183,66 @@ func (s *server) getByPath(path string) (*record, error) {
 	r := &record{}
 	err := s.db.Where("path=?", path).First(r).Error
 	return r, err
+}
+
+func (s *server) insert(id, p, checksum, etag string, mtime uint32) error {
+
+	err := s.db.Exec(`INSERT INTO records (id,path,checksum, e_tag, m_time) VALUES (?,?,?,?,?)
+	ON DUPLICATE KEY UPDATE checksum=VALUES(checksum), e_tag=VALUES(e_tag), m_time=VALUES(m_time)`,
+		id, p, checksum, etag, mtime).Error
+
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
+}
+func (s *server) update(p, etag string, mtime uint32) int64 {
+
+	return s.db.Model(record{}).Where("path=? AND m_time < ?", p, mtime).Updates(record{ETag: etag, MTime: mtime}).RowsAffected
+}
+
+// propagateChanges propagates mtime and etag until the user home directory
+// This propagation is needed for the client discovering changes
+// Ex: given the succesfull upload of the file /local/users/d/demo/photos/1.png
+// the etag and mtime will be propagated to:
+//    - /local/users/d/demo/photos
+//    - /local/users/d/demo
+func (s *server) propagateChanges(p, etag string, mtime uint32, stopPath string) error {
+
+	paths := getPathsTillHome(p)
+	for _, p := range paths {
+		numRows := s.update(p, etag, mtime)
+		if numRows == 0 {
+			log.Warnf("parent path %s has not being updated with etag=%s and mtime=%s", p, etag, mtime)
+		} else {
+			log.Infof("parent path %s has being updated", p)
+		}
+	}
+
+	return nil
+}
+
+func getPathsTillHome(p string) []string {
+
+	paths := []string{}
+	tokens := strings.Split(p, "/")
+
+	homeTokens := tokens[0:5]
+	restTokens := tokens[5:]
+
+	home := path.Clean("/" + path.Join(homeTokens...))
+
+	previous := home
+	paths = append(paths, previous)
+
+	for _, token := range restTokens {
+		previous = path.Join(previous, path.Clean(token))
+		paths = append(paths, previous)
+	}
+
+	log.Infof("paths for update %+v", paths)
+
+	return paths
 }
