@@ -109,6 +109,27 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 	return r, nil
 }
 
+func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
+
+	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, unauthenticatedError
+	}
+
+	log.Infof("%s", idt)
+
+	src := path.Clean(req.Src)
+	dst := path.Clean(req.Dst)
+
+	log.Infof("src path is %s", src)
+	log.Infof("dst path is %s", dst)
+
+	//TODO implement rename in db
+
+	return &pb.Void{}, nil
+}
+
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
