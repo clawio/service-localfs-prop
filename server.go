@@ -3,7 +3,7 @@ package main
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/clawio/service.auth/lib"
-	pb "github.com/clawio/service.localstore.prop/proto"
+	pb "github.com/clawio/service.localstore.prop/proto/propagator"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

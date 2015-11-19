@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package localstore;
+package propagator;
 
 service Prop {
     rpc Put(PutReq) returns (Void) {}

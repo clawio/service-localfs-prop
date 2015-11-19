@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/clawio/grpcxlog"
-	pb "github.com/clawio/service.localstore.prop/proto"
+	pb "github.com/clawio/service.localstore.prop/proto/propagator"
 	"github.com/rs/xlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
