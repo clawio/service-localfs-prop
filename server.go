@@ -23,6 +23,14 @@ var (
 	permissionDenied     = grpc.Errorf(codes.PermissionDenied, "access denied")
 )
 
+// debugLogger satisfies Gorm's logger interface
+// so that we can log SQL queries at Logrus' debug level
+type debugLogger struct{}
+
+func (*debugLogger) Print(msg ...interface{}) {
+	log.Debug(msg)
+}
+
 type newServerParams struct {
 	dsn          string
 	db           *gorm.DB
@@ -38,6 +46,7 @@ func newServer(p *newServerParams) (*server, error) {
 	}
 
 	db.LogMode(true)
+	db.SetLogger(&debugLogger{})
 
 	err = db.AutoMigrate(&record{}).Error
 	if err != nil {
