@@ -2,17 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/clawio/grpcxlog"
 	pb "github.com/clawio/service.localstore.prop/proto/propagator"
-	"github.com/rs/xlog"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 	"net"
 	"os"
 	"strconv"
 )
-
-var log xlog.Logger
 
 const (
 	serviceID         = "CLAWIO_LOCALSTOREPROP"
@@ -39,42 +35,18 @@ func getEnviron() (*environ, error) {
 	return e, nil
 }
 func printEnviron(e *environ) {
-	fmt.Printf("%s=%s", dsnEnvar, e.dsn)
-	fmt.Printf("%s=%d", portEnvar, e.port)
-	fmt.Printf("%s=%s", sharedSecretEnvar, "******")
-}
-
-func setupLog() {
-
-	host, _ := os.Hostname()
-	conf := xlog.Config{
-		// Log info level and higher
-		Level: xlog.LevelDebug,
-		// Set some global env fields
-		Fields: xlog.F{
-			"svc":  serviceID,
-			"host": host,
-		},
-		// Output everything on console
-		Output: xlog.NewOutputChannel(xlog.NewConsoleOutput()),
-	}
-
-	log = xlog.New(conf)
-
-	// Plug the xlog handler's input to Go's default logger
-	grpclog.SetLogger(grpcxlog.Log{log})
-
+	log.Infof("%s=%s", dsnEnvar, e.dsn)
+	log.Infof("%s=%d", portEnvar, e.port)
+	log.Infof("%s=%s", sharedSecretEnvar, "******")
 }
 
 func main() {
-
-	setupLog()
 
 	log.Infof("Service %s started", serviceID)
 
 	env, err := getEnviron()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Error(err)
 		os.Exit(1)
 	}
 
@@ -86,13 +58,13 @@ func main() {
 
 	srv, err := newServer(p)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Error(err)
 		os.Exit(1)
 	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", env.port))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		log.Error(err)
 		os.Exit(1)
 	}
 

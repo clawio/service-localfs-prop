@@ -5,6 +5,7 @@ import (
 	"github.com/clawio/service.auth/lib"
 	pb "github.com/clawio/service.localstore.prop/proto/propagator"
 	"github.com/jinzhu/gorm"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -59,6 +60,10 @@ type server struct {
 
 func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
+	traceID := getGRPCTraceID(ctx)
+	log := log.WithField("trace", traceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
+
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
 		log.Error(err)
@@ -110,6 +115,10 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 }
 
 func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
+
+	traceID := getGRPCTraceID(ctx)
+	log := log.WithField("trace", traceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -174,6 +183,10 @@ func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
 }
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
+	traceID := getGRPCTraceID(ctx)
+	log := log.WithField("trace", traceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
+
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
 		log.Error(err)
@@ -204,6 +217,10 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 }
 
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
+
+	traceID := getGRPCTraceID(ctx)
+	log := log.WithField("trace", traceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -237,6 +254,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	err = s.insert(id, p, req.Checksum, etag, mtime)
 	if err != nil {
+		log.Error(err)
 		return &pb.Void{}, err
 	}
 
@@ -266,7 +284,6 @@ func (s *server) insert(id, p, checksum, etag string, mtime uint32) error {
 		id, p, checksum, etag, mtime).Error
 
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
