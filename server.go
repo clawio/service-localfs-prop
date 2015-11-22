@@ -324,7 +324,6 @@ func (s *server) propagateChanges(p, etag string, mtime uint32, stopPath string)
 	return nil
 }
 
-// TODO remove current dir from returned list
 func getPathsTillHome(p string) []string {
 
 	paths := []string{}
@@ -343,6 +342,7 @@ func getPathsTillHome(p string) []string {
 		paths = append(paths, previous)
 	}
 
+	paths = paths[:len(paths)-1] // remove inserted/updated path from paths to update
 	log.Infof("paths for update %+v", paths)
 
 	return paths
