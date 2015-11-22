@@ -149,15 +149,12 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 		return &pb.Void{}, nil
 	}
 
-	etag := uuid.New()
-	mtime := uint32(time.Now().Unix())
-
 	tx := s.db.Begin()
 	for _, rec := range recs {
-		newPath := path.Join(dst, path.Clean(strings.Trim(rec.Path, src)))
-		log.Infof("src path %s will be renamed to %s", src, newPath)
+		newPath := path.Join(dst, path.Clean(strings.TrimPrefix(rec.Path, src)))
+		log.Infof("src path %s will be renamed to %s", rec.Path, newPath)
 
-		err = s.db.Model(record{}).Where("id=?", rec.ID).Updates(record{ETag: etag, MTime: mtime, Path: newPath}).Error
+		err = s.db.Model(record{}).Where("id=?", rec.ID).Updates(record{Path: newPath}).Error
 		if err != nil {
 			log.Error(err)
 			tx.Rollback()
@@ -168,6 +165,8 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 	log.Infof("renamed %d entries", len(recs))
 
+	etag := uuid.New()
+	mtime := uint32(time.Now().Unix())
 	err = s.propagateChanges(dst, etag, mtime, "")
 	if err != nil {
 		log.Error(err)
@@ -329,6 +328,11 @@ func getPathsTillHome(p string) []string {
 	paths := []string{}
 	tokens := strings.Split(p, "/")
 
+	if len(tokens) < 5 {
+		// if not under home dir we do not propagate
+		return paths
+	}
+
 	homeTokens := tokens[0:5]
 	restTokens := tokens[5:]
 
@@ -342,7 +346,9 @@ func getPathsTillHome(p string) []string {
 		paths = append(paths, previous)
 	}
 
-	paths = paths[:len(paths)-1] // remove inserted/updated path from paths to update
+	if len(paths) >= 1 {
+		paths = paths[:len(paths)-1] // remove inserted/updated path from paths to update
+	}
 	log.Infof("paths for update %+v", paths)
 
 	return paths
