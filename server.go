@@ -5,7 +5,7 @@ import (
 	"github.com/clawio/service.auth/lib"
 	pb "github.com/clawio/service.localstore.prop/proto/propagator"
 	"github.com/jinzhu/gorm"
-	log "github.com/sirupsen/logrus"
+	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,7 +28,7 @@ var (
 type debugLogger struct{}
 
 func (*debugLogger) Print(msg ...interface{}) {
-	log.Debug(msg)
+	rus.Debug(msg)
 }
 
 type newServerParams struct {
@@ -41,7 +41,7 @@ func newServer(p *newServerParams) (*server, error) {
 
 	db, err := newDB("mysql", p.dsn)
 	if err != nil {
-		log.Error(err)
+		rus.Error(err)
 		return nil, err
 	}
 
@@ -50,11 +50,11 @@ func newServer(p *newServerParams) (*server, error) {
 
 	err = db.AutoMigrate(&record{}).Error
 	if err != nil {
-		log.Error(err)
+		rus.Error(err)
 		return nil, err
 	}
 
-	log.Infof("automigration applied")
+	rus.Infof("automigration applied")
 
 	s := &server{}
 	s.p = p
@@ -70,8 +70,26 @@ type server struct {
 func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
 	traceID := getGRPCTraceID(ctx)
-	log := log.WithField("trace", traceID)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
+
+	log.Info("request started")
+
+	// Time request
+	reqStart := time.Now()
+
+	defer func() {
+		// Compute request duration
+		reqDur := time.Since(reqStart)
+
+		// Log access info
+		log.WithFields(rus.Fields{
+			"method":   "get",
+			"type":     "grpcaccess",
+			"duration": reqDur.Seconds(),
+		}).Info("request finished")
+
+	}()
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -126,8 +144,26 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 	traceID := getGRPCTraceID(ctx)
-	log := log.WithField("trace", traceID)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
+
+	log.Info("request started")
+
+	// Time request
+	reqStart := time.Now()
+
+	defer func() {
+		// Compute request duration
+		reqDur := time.Since(reqStart)
+
+		// Log access info
+		log.WithFields(rus.Fields{
+			"method":   "mv",
+			"type":     "grpcaccess",
+			"duration": reqDur.Seconds(),
+		}).Info("request finished")
+
+	}()
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -143,9 +179,9 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 	log.Infof("src path is %s", src)
 	log.Infof("dst path is %s", dst)
 
-	//TODO implement rename in db
 	recs, err := s.getRecordsWithPathPrefix(src)
 	if err != nil {
+		log.Error(err)
 		return &pb.Void{}, nil
 	}
 
@@ -167,7 +203,7 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 	etag := uuid.New()
 	mtime := uint32(time.Now().Unix())
-	err = s.propagateChanges(dst, etag, mtime, "")
+	err = s.propagateChanges(ctx, dst, etag, mtime, "")
 	if err != nil {
 		log.Error(err)
 	}
@@ -183,7 +219,6 @@ func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
 
 	err := s.db.Where("path LIKE ?", p+"%").Find(&recs).Error
 	if err != nil {
-		log.Error(err)
 		return recs, nil
 	}
 
@@ -192,8 +227,26 @@ func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 	traceID := getGRPCTraceID(ctx)
-	log := log.WithField("trace", traceID)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
+
+	log.Info("request started")
+
+	// Time request
+	reqStart := time.Now()
+
+	defer func() {
+		// Compute request duration
+		reqDur := time.Since(reqStart)
+
+		// Log access info
+		log.WithFields(rus.Fields{
+			"method":   "rm",
+			"type":     "grpcaccess",
+			"duration": reqDur.Seconds(),
+		}).Info("request finished")
+
+	}()
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -214,7 +267,7 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 		return &pb.Void{}, err
 	}
 
-	err = s.propagateChanges(p, uuid.New(), uint32(ts), "")
+	err = s.propagateChanges(ctx, p, uuid.New(), uint32(ts), "")
 	if err != nil {
 		log.Error(err)
 	}
@@ -227,8 +280,26 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	traceID := getGRPCTraceID(ctx)
-	log := log.WithField("trace", traceID)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
+
+	log.Info("request started")
+
+	// Time request
+	reqStart := time.Now()
+
+	defer func() {
+		// Compute request duration
+		reqDur := time.Since(reqStart)
+
+		// Log access info
+		log.WithFields(rus.Fields{
+			"method":   "put",
+			"type":     "grpcaccess",
+			"duration": reqDur.Seconds(),
+		}).Info("request finished")
+
+	}()
 
 	idt, err := lib.ParseToken(req.AccessToken, s.p.sharedSecret)
 	if err != nil {
@@ -268,7 +339,7 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
 	log.Infof("new record saved to db")
 
-	err = s.propagateChanges(p, etag, mtime, "")
+	err = s.propagateChanges(ctx, p, etag, mtime, "")
 	if err != nil {
 		log.Error(err)
 	}
@@ -308,22 +379,34 @@ func (s *server) update(p, etag string, mtime uint32) int64 {
 // the etag and mtime will be propagated to:
 //    - /local/users/d/demo/photos
 //    - /local/users/d/demo
-func (s *server) propagateChanges(p, etag string, mtime uint32, stopPath string) error {
+func (s *server) propagateChanges(ctx context.Context, p, etag string, mtime uint32, stopPath string) error {
 
-	paths := getPathsTillHome(p)
+	traceID := getGRPCTraceID(ctx)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
+
+	// TODO(labkode) assert the list ordered from most deeper to less so we can shortcircuit
+	// after first miss
+	paths := getPathsTillHome(ctx, p)
 	for _, p := range paths {
 		numRows := s.update(p, etag, mtime)
 		if numRows == 0 {
-			log.Warnf("parent path %s has not being updated with etag=%s and mtime=%s", p, etag, mtime)
-		} else {
-			log.Infof("parent path %s has being updated", p)
+			log.Warnf("parent path %s has been updated in the meanwhile so we do not override with old info. Propagation stopped", p)
+			// Following the CAS tree approach it does not make sense to update\
+			// parents if child has been updated wit new info
+			break
 		}
+		log.Infof("parent path %s has being updated", p)
 	}
 
 	return nil
 }
 
-func getPathsTillHome(p string) []string {
+func getPathsTillHome(ctx context.Context, p string) []string {
+
+	traceID := getGRPCTraceID(ctx)
+	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
+	ctx = newGRPCTraceContext(ctx, traceID)
 
 	paths := []string{}
 	tokens := strings.Split(p, "/")
