@@ -432,6 +432,13 @@ func getPathsTillHome(ctx context.Context, p string) []string {
 	if len(paths) >= 1 {
 		paths = paths[:len(paths)-1] // remove inserted/updated path from paths to update
 	}
+
+	//reverse it to have deeper paths first to shortcircuit
+	for i := len(paths)/2 - 1; i >= 0; i-- {
+		opp := len(paths) - 1 - i
+		paths[i], paths[opp] = paths[opp], paths[i]
+
+	}
 	log.Infof("paths for update %+v", paths)
 
 	return paths
