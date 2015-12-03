@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 )
 
@@ -41,7 +42,7 @@ func printEnviron(e *environ) {
 }
 
 func main() {
-
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.Infof("Service %s started", serviceID)
 
 	env, err := getEnviron()
