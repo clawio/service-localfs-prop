@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	dirPerm = 0755
+	dirPerm           = 0755
+	maxSQLIdle        = 100
+	maxSQLConcurrency = 1000
 )
 
 var (
@@ -47,6 +49,8 @@ func newServer(p *newServerParams) (*server, error) {
 
 	db.LogMode(true)
 	db.SetLogger(&debugLogger{})
+	db.DB().SetMaxIdleConns(maxSQLIdle)
+	db.DB().SetMaxOpenConns(maxSQLConcurrency)
 
 	err = db.AutoMigrate(&record{}).Error
 	if err != nil {
