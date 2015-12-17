@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	pb "github.com/clawio/service.localstore.prop/proto/propagator"
+	pb "github.com/clawio/service-localfs-prop/proto/propagator"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"net"
@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	serviceID         = "CLAWIO_LOCALSTOREPROP"
+	serviceID         = "CLAWIO_LOCALFS_PROP"
 	dsnEnvar          = serviceID + "_DSN"
 	portEnvar         = serviceID + "_PORT"
 	sharedSecretEnvar = "CLAWIO_SHAREDSECRET"
