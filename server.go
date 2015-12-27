@@ -221,7 +221,9 @@ func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
 
 	var recs []record
 
-	err := s.db.Where("path LIKE ?", p+"%").Find(&recs).Error
+	// the regexp is path/% instead of path% to avoid getting
+	// path1 and path11 in from the DB
+	err := s.db.Where("path LIKE ? OR path=?", p+"/%", p).Find(&recs).Error
 	if err != nil {
 		return recs, nil
 	}
@@ -265,7 +267,7 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 	log.Infof("path is %s", p)
 
 	ts := time.Now().Unix()
-	err = s.db.Where("path LIKE ? AND m_time < ?", p+"%", ts).Delete(record{}).Error
+	err = s.db.Where("(path LIKE ? OR path=? ) AND m_time < ?", p+"/%", p, ts).Delete(record{}).Error
 	if err != nil {
 		log.Error(err)
 		return &pb.Void{}, err
@@ -378,8 +380,8 @@ func (s *server) update(p, etag string, mtime uint32) int64 {
 }
 
 // propagateChanges propagates mtime and etag until the user home directory
-// This propagation is needed for the client discovering changes
-// Ex: given the succesfull upload of the file /local/users/d/demo/photos/1.png
+// This propagation is needed for the client to discover changes
+// Ex: given the successful upload of the file /local/users/d/demo/photos/1.png
 // the etag and mtime will be propagated to:
 //    - /local/users/d/demo/photos
 //    - /local/users/d/demo
@@ -433,6 +435,7 @@ func getPathsTillHome(ctx context.Context, p string) []string {
 		paths = append(paths, previous)
 	}
 
+	// remove last path to not update the recently inserted/updated path
 	if len(paths) >= 1 {
 		paths = paths[:len(paths)-1] // remove inserted/updated path from paths to update
 	}
