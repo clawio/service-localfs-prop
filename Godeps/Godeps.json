@@ -8,7 +8,7 @@
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
 		},
 		{
-			"ImportPath": "github.com/clawio/service.auth/lib",
+			"ImportPath": "github.com/clawio/service-auth/lib",
 			"Rev": "59b2672ba44edebdc97f2a55f56d716d7c8ea33b"
 		},
 		{
