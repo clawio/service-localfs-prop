@@ -2,8 +2,8 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/clawio/service-auth/lib"
 	pb "github.com/clawio/service-localfs-prop/proto/propagator"
-	"github.com/clawio/service.auth/lib"
 	"github.com/jinzhu/gorm"
 	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
