@@ -12,16 +12,20 @@ import (
 )
 
 const (
-	serviceID         = "CLAWIO_LOCALFS_PROP"
-	dsnEnvar          = serviceID + "_DSN"
-	portEnvar         = serviceID + "_PORT"
-	sharedSecretEnvar = "CLAWIO_SHAREDSECRET"
+	serviceID              = "CLAWIO_LOCALFS_PROP"
+	dsnEnvar               = serviceID + "_DSN"
+	portEnvar              = serviceID + "_PORT"
+	maxSqlIdleEnvar        = serviceID + "_MAXSQLIDLE"
+	maxSqlConcurrencyEnvar = serviceID + "_MAXSQLCONCURRENCY"
+	sharedSecretEnvar      = "CLAWIO_SHAREDSECRET"
 )
 
 type environ struct {
-	dsn          string
-	port         int
-	sharedSecret string
+	dsn               string
+	port              int
+	maxSqlIdle        int
+	maxSqlConcurrency int
+	sharedSecret      string
 }
 
 func getEnviron() (*environ, error) {
@@ -32,11 +36,27 @@ func getEnviron() (*environ, error) {
 		return nil, err
 	}
 	e.port = port
+
+	maxSqlIdle, err := strconv.Atoi(os.Getenv(maxSqlIdleEnvar))
+	if err != nil {
+		return nil, err
+	}
+	e.maxSqlIdle = maxSqlIdle
+
+	maxSqlConcurrency, err := strconv.Atoi(os.Getenv(maxSqlConcurrencyEnvar))
+	if err != nil {
+		return nil, err
+	}
+	e.maxSqlConcurrency = maxSqlConcurrency
+
 	e.sharedSecret = os.Getenv(sharedSecretEnvar)
 	return e, nil
 }
 func printEnviron(e *environ) {
 	log.Infof("%s=%s", dsnEnvar, e.dsn)
+	log.Infof("%s=%d", portEnvar, e.port)
+	log.Infof("%s=%d", maxSqlIdleEnvar, e.maxSqlIdle)
+	log.Infof("%s=%d", maxSqlConcurrencyEnvar, e.maxSqlConcurrency)
 	log.Infof("%s=%d", portEnvar, e.port)
 	log.Infof("%s=%s", sharedSecretEnvar, "******")
 }
@@ -56,6 +76,8 @@ func main() {
 	p := &newServerParams{}
 	p.dsn = env.dsn
 	p.sharedSecret = env.sharedSecret
+	p.maxSqlIdle = env.maxSqlIdle
+	p.maxSqlConcurrency = env.maxSqlConcurrency
 
 	srv, err := newServer(p)
 	if err != nil {

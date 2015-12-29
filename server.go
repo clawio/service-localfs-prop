@@ -16,7 +16,7 @@ import (
 
 const (
 	dirPerm           = 0755
-	maxSQLIdle        = 100
+	maxSQLIdle        = 1000
 	maxSQLConcurrency = 1000
 )
 
@@ -34,9 +34,11 @@ func (*debugLogger) Print(msg ...interface{}) {
 }
 
 type newServerParams struct {
-	dsn          string
-	db           *gorm.DB
-	sharedSecret string
+	dsn               string
+	db                *gorm.DB
+	sharedSecret      string
+	maxSqlIdle        int
+	maxSqlConcurrency int
 }
 
 func newServer(p *newServerParams) (*server, error) {
@@ -49,8 +51,8 @@ func newServer(p *newServerParams) (*server, error) {
 
 	db.LogMode(true)
 	db.SetLogger(&debugLogger{})
-	db.DB().SetMaxIdleConns(maxSQLIdle)
-	db.DB().SetMaxOpenConns(maxSQLConcurrency)
+	db.DB().SetMaxIdleConns(p.maxSqlIdle)
+	db.DB().SetMaxOpenConns(p.maxSqlConcurrency)
 
 	err = db.AutoMigrate(&record{}).Error
 	if err != nil {
