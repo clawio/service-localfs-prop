@@ -13,7 +13,7 @@ import (
 // TODO(labkode) set collation for table and column to utf8. The default is swedish
 type record struct {
 	ID       string
-	Path     string
+	Path     string `sql:"unique_index:idx_path"`
 	Checksum string
 	ETag     string
 	MTime    uint32
