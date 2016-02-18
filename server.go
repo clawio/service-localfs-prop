@@ -1,10 +1,10 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"github.com/clawio/service-auth/lib"
 	pb "github.com/clawio/service-localfs-prop/proto/propagator"
 	"github.com/jinzhu/gorm"
+	"github.com/nu7hatch/gouuid"
 	rus "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -12,12 +12,6 @@ import (
 	"path"
 	"strings"
 	"time"
-)
-
-const (
-	dirPerm           = 0755
-	maxSQLIdle        = 1000
-	maxSQLConcurrency = 1000
 )
 
 var (
@@ -75,7 +69,11 @@ type server struct {
 
 func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Record{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 
@@ -149,7 +147,15 @@ func (s *server) Get(ctx context.Context, req *pb.GetReq) (*pb.Record, error) {
 
 func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 
@@ -207,9 +213,13 @@ func (s *server) Mv(ctx context.Context, req *pb.MvReq) (*pb.Void, error) {
 
 	log.Infof("renamed %d entries", len(recs))
 
-	etag := uuid.New()
+	etag, err := uuid.NewV4()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
 	mtime := uint32(time.Now().Unix())
-	err = s.propagateChanges(ctx, dst, etag, mtime, "")
+	err = s.propagateChanges(ctx, dst, etag.String(), mtime, "")
 	if err != nil {
 		log.Error(err)
 	}
@@ -234,7 +244,11 @@ func (s *server) getRecordsWithPathPrefix(p string) ([]record, error) {
 }
 func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 
@@ -275,7 +289,12 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 		return &pb.Void{}, err
 	}
 
-	err = s.propagateChanges(ctx, p, uuid.New(), uint32(ts), "")
+	etag, err := uuid.NewV4()
+	if err != nil {
+		return &pb.Void{}, err
+	}
+
+	err = s.propagateChanges(ctx, p, etag.String(), uint32(ts), "")
 	if err != nil {
 		log.Error(err)
 	}
@@ -287,7 +306,11 @@ func (s *server) Rm(ctx context.Context, req *pb.RmReq) (*pb.Void, error) {
 
 func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return &pb.Void{}, err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 
@@ -322,14 +345,26 @@ func (s *server) Put(ctx context.Context, req *pb.PutReq) (*pb.Void, error) {
 	log.Infof("path is %s", p)
 
 	var id string
-	var etag = uuid.New()
+	rawEtag, err := uuid.NewV4()
+	if err != nil {
+		log.Error(err)
+		return &pb.Void{}, err
+	}
+	etag := rawEtag.String()
+
 	var mtime = uint32(time.Now().Unix())
 
 	r, err := s.getByPath(p)
 	if err != nil {
 		log.Error(err)
 		if err == gorm.RecordNotFound {
-			id = uuid.New()
+			rawEtag, err := uuid.NewV4()
+			if err != nil {
+				log.Error(err)
+				return &pb.Void{}, err
+			}
+
+			id = rawEtag.String()
 		} else {
 			return &pb.Void{}, err
 		}
@@ -389,7 +424,11 @@ func (s *server) update(p, etag string, mtime uint32) int64 {
 //    - /local/users/d/demo
 func (s *server) propagateChanges(ctx context.Context, p, etag string, mtime uint32, stopPath string) error {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		return err
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 
@@ -412,7 +451,12 @@ func (s *server) propagateChanges(ctx context.Context, p, etag string, mtime uin
 
 func getPathsTillHome(ctx context.Context, p string) []string {
 
-	traceID := getGRPCTraceID(ctx)
+	traceID, err := getGRPCTraceID(ctx)
+	if err != nil {
+		rus.Error(err)
+		// FIX: we do not return here the error to not pollute code
+		// that calls this one
+	}
 	log := rus.WithField("trace", traceID).WithField("svc", serviceID)
 	ctx = newGRPCTraceContext(ctx, traceID)
 

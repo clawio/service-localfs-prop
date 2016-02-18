@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-
-	"code.google.com/p/go-uuid/uuid"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
+	"github.com/nu7hatch/gouuid"
 	"golang.org/x/net/context"
 	metadata "google.golang.org/grpc/metadata"
 )
@@ -40,21 +39,33 @@ func newGRPCTraceContext(ctx context.Context, trace string) context.Context {
 	return ctx
 }
 
-func getGRPCTraceID(ctx context.Context) string {
+func getGRPCTraceID(ctx context.Context) (string, error) {
 
 	md, ok := metadata.FromContext(ctx)
 	if !ok {
-		return uuid.New()
+		id, err := uuid.NewV4()
+		if err != nil {
+			return "", err
+		}
+		return id.String(), nil
 	}
 
 	tokens := md["trace"]
 	if len(tokens) == 0 {
-		return uuid.New()
+		id, err := uuid.NewV4()
+		if err != nil {
+			return "", err
+		}
+		return id.String(), nil
 	}
 
 	if tokens[0] != "" {
-		return tokens[0]
+		return tokens[0], nil
 	}
 
-	return uuid.New()
+	id, err := uuid.NewV4()
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
 }
